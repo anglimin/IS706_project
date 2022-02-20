@@ -1,0 +1,2 @@
+# Dont push the npm modules. just npm ci/install from the directory of package.json
+/node_modules
