@@ -6,13 +6,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions as EC 
-from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.utils import ChromeType
 from bs4 import BeautifulSoup
 import requests
-
 
 class WebScrapping:
 
@@ -20,6 +16,13 @@ class WebScrapping:
         service = Service(executable_path=ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service)
         self.driver = driver
+
+    def string_similarity(self, string1, string2):
+        """
+        Purpose:
+        If a certain threshold, the string will be similar
+        """
+        pass
     
     def search_information(self, deprecated_api):
         """
@@ -36,5 +39,13 @@ class WebScrapping:
         search_results = driver.find_elements(By.XPATH, '(//h3)/../../a')
         for result in search_results:
             result.click()
+            current_url = driver.current_url
+            current_page = requests.get(current_url)
+            soup = BeautifulSoup(current_page.content, "html.parser")
             
+            # go back to the search result page
+            driver.execute_script("window.history.go(-1)")
 
+
+if __name__ == "__main__":
+    pass
