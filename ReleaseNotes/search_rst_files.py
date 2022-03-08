@@ -317,7 +317,7 @@ mode = 1  # 0-test mode, 2-search one, 1-search multiples
 
 #search one
 print("!-------------------------------------------------------!") 
-if mode == 0 :
+if mode == 2 :
 	mising_api = "numpy.alen"
 	mising_api = "numpy.typeDict"
 	mising_api = "numpy.testing.rand"
