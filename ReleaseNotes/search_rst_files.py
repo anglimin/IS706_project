@@ -1,5 +1,5 @@
 #author : pansilup
-#data   : 07-03-2022
+#date   : 07-03-2022
 #project: is706-finding missing python APIs from release notes
 
 import os
@@ -100,7 +100,7 @@ def search_api(lib, api, fnames):
                     data = tlines[linehit]
                     i = linehit + 1
                     #print(linehit,i,t_no_lines, len(tlines))
-                    while i < linehit + 3 and i < t_no_lines:
+                    while i < linehit + 5 and i < t_no_lines:
                         data = data + ' ' + tlines[i]
                         #print(i)
                         #print("\ndata", data)
@@ -141,17 +141,21 @@ def fetch_string(s_line, a_boundary, delim):
         elif end > start and end < a_boundary[1]:
             new_api = s_line[start+len(delim):end]
             #print("new api : ", new_api)
+    if new_api:
+        if 'https' in new_api or '#' in new_api or '/' in new_api or '()' in new_api:
+            new_api = []
+            
     return new_api
 #--------------------------------------------------------------------------------------
 
 def check_if_real_hit(a_boundary, s_line):
     possible_api = []
     if a_boundary:
-       possible_api = fetch_string(s_line, a_boundary, "``") #new api inside `` ``
+       possible_api = fetch_string(s_line, a_boundary, "`") #new api inside `` ``
        if(possible_api):
            return possible_api,1
        else:
-           possible_api = fetch_string(s_line, a_boundary, "`") #new api inside ` `  
+           possible_api = fetch_string(s_line, a_boundary, "``") #new api inside ` `  
            if(possible_api):
                return possible_api,1
     return possible_api, 0
@@ -166,7 +170,7 @@ def extract_replacement(s_line, d_api):
     sdict = {}
     sdict['0'] = d_api
     sdict['1'] = 'removed'
-    sdict['2'] = 'replaced by' #
+    sdict['2'] = 'replaced' #
     sdict['3'] = 'deprecat'
     sdict['4'] = 'use'
     sdict['5'] = 'instead'
@@ -174,6 +178,14 @@ def extract_replacement(s_line, d_api):
     sdict['7'] = 'in favor of' #
     sdict['8'] = 'equivalent' #
     sdict['9'] = 'used instead'
+    sdict['10']= 'better'
+    sdict['11']= 'replace'
+    sdict['12']= 'with'
+    sdict['13']= 'available'
+    sdict['14']= 'expire'
+    sdict['15']= 'old'
+    sdict['16']= 'renamed'
+    sdict['17']= 'superceded by'
     
     #old dep/remo 'equivalent' new
     #old dep/rem  new 'be used instead'
@@ -221,9 +233,74 @@ def extract_replacement(s_line, d_api):
                 break
     possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
 
+    #pattern 1: 0-1-2 >> '0-old_api' ... 3-deprecated ... 2-replaced by ``new_api``
+    print("checking for pattern 2 ...")
+    pattern = ['0', '3', '2']
+    ph = [0, 0, 0]
+    a_boundary = []
+    got_it = 0
+    s_l = 0
+    for p in pattern:
+        #print("p",p)
+        l = 0
+        for s in key_idxs[s_l:]:
+            l += 1
+            #print("key_idxs[:]",key_idxs[s_l:])
+            if ph[0] == 0 and s[0] == p:
+                ph[0] = 1
+                s_l = l
+                break
+            elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                ph[1] = 1
+                s_l = s_l + l
+                break
+            elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                ph[2] = 1
+                a_boundary = [s[1], 'e']
+                got_it = 1
+                #print(a_boundary)
+                break
+    possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+
+    if got_it == 0:
+        #pattern 2: 0-14-4-5 >> '0-old_api' ... 14-expire ... 4-use ``new_api`` 5-instead
+        print("checking for pattern 3 ...")
+        pattern = ['0', '14', '4', '5']
+        ph = [0, 0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    #print("st", st)
+                    s_l = s_l + l
+                    break
+                elif ph[2] == 1 and ph[3] == 0 and s[0] == p:
+                    ph[3] == 1
+                    a_boundary = [st, s[1]]
+                    got_it = 1
+                    #print("b",a_boundary)
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+        
     if got_it == 0:
         #pattern 2: 0-3-4-5 >> '0-old_api' ... 3-deprecat ... 4-use ``new_api`` 5-instead
-        print("checking for pattern 2 ...")
+        print("checking for pattern 4 ...")
         pattern = ['0', '3', '4', '5']
         ph = [0, 0, 0, 0]
         a_boundary = []
@@ -258,7 +335,7 @@ def extract_replacement(s_line, d_api):
 
     if got_it == 0:
     #pattern 3: 0-3-6 >> '0-old_api' ... 3-deprecate ... 6-alias ``new_api``
-        print("checking for pattern 3 ...")
+        print("checking for pattern 4 ...")
         pattern = ['0', '3', '6']
         ph = [0, 0, 0]
         a_boundary = []
@@ -288,7 +365,7 @@ def extract_replacement(s_line, d_api):
 
     if got_it == 0:
     #pattern 4: 0-3-7 >> '0-old_api' ... 3-deprecate ... 6-in favor of ``new_api``
-        print("checking for pattern 4 ...")
+        print("checking for pattern 6 ...")
         pattern = ['0', '3', '7']
         ph = [0, 0, 0]
         a_boundary = []
@@ -317,8 +394,40 @@ def extract_replacement(s_line, d_api):
         possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
 
     if got_it == 0:
+    #pattern 5: 0-3-7 >> '0-old_api' ... 3-deprecate ...  ``new_api`` 8-equivalent
+        print("checking for pattern 7 ...")
+        pattern = ['0', '3', '8']
+        ph = [0, 0, 0]
+        a_boundary = []
+        got_it = 0
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    st = s[1]
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    a_boundary = [st, s[1]]
+                    got_it = 1
+                    #print(a_boundary)
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+
+    if got_it == 0:
     #pattern 5: 0-3-7 >> '0-old_api' ... 3-deprecate ... 8-equivalent ``new_api``
-        print("checking for pattern 5 ...")
+        print("checking for pattern 8 ...")
         pattern = ['0', '3', '8']
         ph = [0, 0, 0]
         a_boundary = []
@@ -349,7 +458,7 @@ def extract_replacement(s_line, d_api):
 
     if got_it == 0:
             #pattern 6: 0-1-4-5 >> '0-old_api' ... 1-removed ... 4-use ``new_api`` 5-instead
-            print("checking for pattern 6 ...")
+            print("checking for pattern 9 ...")
             pattern = ['0', '1', '4', '5']
             ph = [0, 0, 0, 0]
             a_boundary = []
@@ -384,7 +493,7 @@ def extract_replacement(s_line, d_api):
 
     if got_it == 0:
         #pattern 7: 0-3-8 >> '0-old_api' ... 3-deprecat ``new_api`` 8-equivalent
-        print("checking for pattern 7 ...")
+        print("checking for pattern 10 ...")
         pattern = ['0', '3', '8']
         ph = [0, 0, 0]
         a_boundary = []
@@ -413,7 +522,7 @@ def extract_replacement(s_line, d_api):
         
     if got_it == 0:
         #pattern 7: 0-3-9 >> '0-old_api' ... 3-deprecat ``new_api`` 9-used instead
-        print("checking for pattern 8 ...")
+        print("checking for pattern 11 ...")
         pattern = ['0', '3', '9']
         ph = [0, 0, 0]
         a_boundary = []
@@ -440,6 +549,300 @@ def extract_replacement(s_line, d_api):
                     break
         possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
     
+    if got_it == 0:
+        #pattern 2: 0-3-4 >> '0-old_api' ... 3-deprecat ... 4-use ``new_api``
+        print("checking for pattern 12 ...")
+        pattern = ['0', '3', '4']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+    if got_it == 0:
+        #pattern 2: 11-0-12 >> 11-replace 0-old_api 12-with ``new_api``
+        print("checking for pattern 13 ...")
+        pattern = ['11', '0', '12']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+        
+    if got_it == 0:
+        #pattern 2: 3-0-10 >> '3-deprecat ... 0-old_api' 10-better ``new_api``
+        print("checking for pattern 14 ...")
+        pattern = ['3', '0', '10']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+
+    if got_it == 0:
+        #pattern 2: 0-16 >> 0-old  16-renamed  <new>
+        print("checking for pattern 15 ...")
+        pattern = ['0', '16']
+        ph = [0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+        
+    if got_it == 0:
+        #pattern 2: 0-13 >> 0-old_api 13-available in <new api>
+        print("checking for pattern 16 ...")
+        pattern = ['0', '13']
+        ph = [0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+        print(possible_api)
+        
+    if got_it == 0:
+        #pattern 2: 0-3-11 >> 0-old_api 3-deprecat 11-replcemen ``new_api``
+        print("checking for pattern 17 ...")
+        pattern = ['0', '3', '11']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+    if got_it == 0:
+        #pattern 2: 0-4-5 >> '0-old_api' ...4-use ``new_api`` 5-instead
+        print("checking for pattern 18 ...")
+        pattern = ['0', '4', '5']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    st = s[1]
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    a_boundary = [st, s[1]]
+                    got_it = 1
+                    #print("st", st)
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+    if got_it == 0:
+        #pattern 2: 0-17 >> '0-old_api' .17-'superceded by' ``new_api`` 
+        print("checking for pattern 19 ...")
+        pattern = ['0', '17']
+        ph = [0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+
+    if got_it == 0:
+        #pattern 2: 3-0-2 >> 3-deprecat '0-old_api' 2-replace ``new_api``
+        print("checking for pattern 20 ...")
+        pattern = ['3', '0', '2']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    st = s[1]
+                    a_boundary = [st, 'e']
+                    got_it = 1
+                    #print("st", st)
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+    if got_it == 0:
+        #pattern 2: 11-15-0 >> <new> 11-replace 15-older '0-old_api' 
+        print("checking for pattern 21 ...")
+        pattern = ['11', '15', '0']
+        ph = [0, 0, 0]
+        a_boundary = []
+        s_l = 0
+        for p in pattern:
+            #print("p",p)
+            l = 0
+            for s in key_idxs[s_l:]:
+                l += 1
+                #print("key_idxs[:]",key_idxs[s_l:])
+                if ph[0] == 0 and s[0] == p:
+                    st = 0
+                    a_boundary = [st, s[1]]
+                    ph[0] = 1
+                    s_l = l
+                    break
+                elif ph[0] == 1 and ph[1] == 0 and s[0] == p:
+                    ph[1] = 1
+                    s_l = s_l + l
+                    break
+                elif ph[1] == 1 and ph[2] == 0 and s[0] == p:
+                    ph[2] = 1
+                    got_it = 1
+                    #print("st", st)
+                    s_l = s_l + l
+                    break
+        possible_api, got_it  = check_if_real_hit(a_boundary, s_line)
+
+        
     if(possible_api):
         n_api.append(possible_api)
          
@@ -499,15 +902,16 @@ def driver_f(depd_api, repl_api = "is706"):
                     replacements.append(ans)
                 m = m + 1
         if replacements:
-            replacements = list(dict.fromkeys(replacements[0]))
+            #print("v",replacements)
+            #replacements = list(dict.fromkeys(replacements[0]))
             print("\n!-- replacement APIs : ", replacements)
         else:
             print("\n!-- no replacement so far ...")
         
     if result_log == 1:
         if result_log == 1:
+            extr = ''
             if hits:
-                extr = ''
                 for h in hits:
                     for hh in h:
                         extr = extr + ' ' + hh
@@ -536,7 +940,7 @@ def driver_f(depd_api, repl_api = "is706"):
 
 #--------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------
-mode        = 3  # 0-test mode, 2-search one, 1-search multiples 3-fileinput
+mode        = 2  # 0-test mode, 2-search one, 1-search multiples 3-fileinput
 result_log  = 1
 
 if result_log == 1:
@@ -565,12 +969,12 @@ if mode == 1:
         
 #search just one
 if mode == 2:
-	mising_api = "numpy.alen"
+	mising_api = "scipy.misc.imfilter"
 	driver_f(mising_api, "len")
 
 #search by giving a file with depd APIs
 if mode == 3:
-    with open('depdAPI/numpy.csv', mode ='r')as file:
+    with open('depdAPI/seaborn.csv', mode ='r')as file:
         csvFile = csv.reader(file)
         for lines in csvFile:
             if len(lines) == 1:
