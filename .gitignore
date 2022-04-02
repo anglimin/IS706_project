@@ -2,3 +2,4 @@
 /node_modules
 /WebScrapping/*.rst
 /EmpiricalStudy/Changelogs
+/StackOverflowAPI/*.csv
