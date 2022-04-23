@@ -335,7 +335,7 @@ def extract_replacement(s_line, d_api):
 
     if got_it == 0:
     #pattern 3: 0-3-6 >> '0-old_api' ... 3-deprecate ... 6-alias ``new_api``
-        print("checking for pattern 4 ...")
+        print("checking for pattern 5 ...")
         pattern = ['0', '3', '6']
         ph = [0, 0, 0]
         a_boundary = []
@@ -940,7 +940,12 @@ def driver_f(depd_api, repl_api = "is706"):
 
 #--------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------
-mode        = 2  # 0-test mode, 2-search one, 1-search multiples 3-fileinput
+# 0-dev test, 
+# 2-search one deprecation, 
+# 1-search multiples
+# 3-fileinput
+mode        = 3  
+#enable logging of results
 result_log  = 1
 
 if result_log == 1:
@@ -952,7 +957,7 @@ if result_log == 1:
     #writer = csv.writer(f, delimiter=',')
 
 print("!-------------------------------------------------------!") 
-#just test
+#dev test
 if mode == 0 :
 	mising_api = "teest.test"
 	driver_f(mising_api)
@@ -967,14 +972,14 @@ if mode == 1:
 	for missing_api in missing_apis:
 	    driver_f(missing_api)
         
-#search just one
+#search one deprecated API
 if mode == 2:
-	mising_api = "scipy.misc.imfilter"
+	mising_api = "numpy.alen" #alterdot
 	driver_f(mising_api, "len")
 
-#search by giving a file with depd APIs
+#search by providing a file with depd APIs
 if mode == 3:
-    with open('depdAPI/seaborn.csv', mode ='r')as file:
+    with open('depdAPI/pandas.csv', mode ='r')as file:
         csvFile = csv.reader(file)
         for lines in csvFile:
             if len(lines) == 1:
