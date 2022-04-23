@@ -1,0 +1,7 @@
+deprecated API,replacement API,extracted_text,PROPOSED_REPLACEMENT
+seaborn.corrplot,heatmap,"{'(""The `corrplot` function has been deprecated in favor ""                   ""of `heatmap` and will be removed in a forthcoming ""                   ""release. Please update your code.""'}","{'', 'heatmap'}"
+seaborn.symmatplot,heatmap,"{'(""The `symmatplot` function has been deprecated in favor ""                   ""of `heatmap` and will be removed in a forthcoming ""                   ""release. Please update your code.""'}","{'', 'heatmap'}"
+seaborn.set_color_palette,set_palette,"{'""set_color_palette is deprecated, use set_palette instead."",                  UserWarning'}",{'set_palette'}
+seaborn.palette_context,set_palette,"{'""palette_context is deprecated, use color_palette directly."",                  UserWarning'}",{'color_palette'}
+seaborn.lvplot,boxenplot,"{'msg, UserWarning', 'msg', '""The `dropna` parameter has been removed"", UserWarning', '""The `x_order` parameter has been renamed `order`"",                      UserWarning', '""The `hline` parameter has been removed"", UserWarning'}",set()
+seaborn.tsplot,lineplot,"{'msg, UserWarning'}",set()
